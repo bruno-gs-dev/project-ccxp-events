@@ -96,7 +96,7 @@
                     <input 
                         type="text" 
                         id="search-input"
-                        placeholder="Buscar ativação ou marca..." 
+                        placeholder="Buscar..." 
                         class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-sm rounded-xl py-2.5 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-slate-600"
                     >
                 </div>
@@ -115,9 +115,9 @@
         <div id="filter-drawer" class="hidden px-4 pb-4 fade-in">
             <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-3">
                 <div>
-                    <label class="text-xs font-semibold text-slate-500 uppercase mb-2 block">Filtrar por Marca</label>
+                    <label id="filter-label" class="text-xs font-semibold text-slate-500 uppercase mb-2 block">Filtrar por Marca</label>
                     <select id="brand-select" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-sm text-slate-300 focus:outline-none focus:border-indigo-500">
-                        <option value="Todas">Todas as Marcas</option>
+                        <option value="Todas">Todas</option>
                         <!-- Options injected via JS -->
                     </select>
                 </div>
@@ -140,6 +140,13 @@
             class="flex-1 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-300 transition-colors flex items-center justify-center gap-2"
         >
             <i class="ph ph-gift text-lg"></i> Brindes
+        </button>
+        <button 
+            onclick="switchTab('lineup')"
+            id="tab-lineup"
+            class="flex-1 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-300 transition-colors flex items-center justify-center gap-2"
+        >
+            <i class="ph ph-calendar-blank text-lg"></i> Line-up
         </button>
     </div>
 
@@ -196,7 +203,7 @@
             <div class="p-4 bg-slate-900 border-t border-slate-800 flex gap-3 shrink-0">
                 <button class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2">
                     <i class="ph ph-map-pin text-xl"></i>
-                    Localizar no Mapa
+                    Localizar
                 </button>
                 <button class="p-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all active:scale-95">
                     <i class="ph ph-share-network text-xl"></i>
@@ -208,30 +215,81 @@
     <script>
         // --- CONSTANTS & CONFIG ---
         const API_URL = "https://typesense.ccxp.com.br/multi_search?x-typesense-api-key=87UE3dBtOyjJpNU4TJIo4KOMiiasac93";
-        const API_PAYLOAD = {
-            "searches": [
-                {
-                    "query_by": "title, slug, brand, types, questionsAndAnswers, schedules",
-                    "query_by_weights": "100, 80, 50, 30, 80, 40",
-                    "highlight_fields": "title, brand, schedules",
-                    "per_page": 250,
-                    "facet_by": "brand,schedules,types",
-                    "exhaustive_search": true,
-                    "highlight_full_fields": "title, slug, brand, types, questionsAndAnswers, schedules",
-                    "collection": "activations",
-                    "q": "*",
-                    "filter_by": "locale:pt-br",
-                    "max_facet_values": 50,
-                    "page": 1
-                }
-            ]
+        
+        // Payload base para Ativações
+        const ACTIVATIONS_PAYLOAD = {
+            "query_by": "title, slug, brand, types, questionsAndAnswers, schedules",
+            "query_by_weights": "100, 80, 50, 30, 80, 40",
+            "highlight_fields": "title, brand, schedules",
+            "per_page": 250,
+            "facet_by": "brand,schedules,types",
+            "exhaustive_search": true,
+            "highlight_full_fields": "title, slug, brand, types, questionsAndAnswers, schedules",
+            "collection": "activations",
+            "q": "*",
+            "filter_by": "locale:pt-br",
+            "max_facet_values": 50,
+            "page": 1
         };
 
+        // Payload base para Line-ups
+        const LINEUP_PAYLOAD = {
+            "query_by": "title, description, stage_title, guests",
+            "query_by_weights": "120, 50, 80, 60",
+            "highlight_fields": "title, description",
+            "per_page": 250,
+            "facet_by": "stage_title, date",
+            "exhaustive_search": true,
+            "collection": "lineups", // Suposição de nome de coleção
+            "q": "*",
+            "filter_by": "locale:pt-br",
+            "sort_by": "start_date:asc",
+            "max_facet_values": 50,
+            "page": 1
+        };
+
+        // Fallback de Ativações
         const RAW_DATA_FALLBACK = {
+            "results": [{ "facet_counts": [], "found": 0, "hits": [] }]
+        };
+
+        // Fallback de Line-up (Mock) para visualização
+        const RAW_LINEUP_FALLBACK = {
             "results": [{
-                "facet_counts": [],
-                "found": 0,
-                "hits": [] // Populated if needed, keeping it empty for brevity in fallback structure
+                "facet_counts": [
+                    {
+                        "counts": [
+                            { "count": 5, "value": "Palco Thunder by Cinemark Club" },
+                            { "count": 3, "value": "Palco Omelete" }
+                        ],
+                        "field_name": "stage_title"
+                    }
+                ],
+                "found": 2,
+                "hits": [
+                    {
+                        "document": {
+                            "title": "Painel de Abertura: O Futuro do Cinema",
+                            "start_date": "2025-12-04T10:00:00Z",
+                            "end_date": "2025-12-04T11:00:00Z",
+                            "stage_title": "Palco Thunder by Cinemark Club",
+                            "description": "Grandes diretores discutem o que esperar dos próximos anos.",
+                            "image": "https://ccxp-production-files.s3.amazonaws.com/CCXP_23_Thumb_Palcos_Thunder_01_882c9c270f.jpg",
+                            "brand": "CCXP"
+                        }
+                    },
+                    {
+                        "document": {
+                            "title": "Showcase: Paramount Pictures",
+                            "start_date": "2025-12-05T14:30:00Z",
+                            "end_date": "2025-12-05T15:30:00Z",
+                            "stage_title": "Palco Omelete",
+                            "description": "Novidades exclusivas e trailers inéditos.",
+                            "image": "https://ccxp-production-files.s3.amazonaws.com/CCXP_23_Thumb_Palcos_Omelete_01_4b8b8b8b8b.jpg",
+                            "brand": "Paramount"
+                        }
+                    }
+                ]
             }]
         };
 
@@ -243,6 +301,7 @@
             'Red Bull': 'bg-blue-900',
             'Petrobras': 'bg-green-600',
             'Sanrio': 'bg-pink-500',
+            'Palco Thunder': 'bg-yellow-600',
             'Default': 'bg-slate-700'
         };
 
@@ -250,8 +309,9 @@
 
         // --- STATE MANAGEMENT ---
         const state = {
-            data: RAW_DATA_FALLBACK,
-            activeTab: 'activations', // 'activations' | 'gifts'
+            activationsData: RAW_DATA_FALLBACK, // Cache for activations
+            lineupData: RAW_LINEUP_FALLBACK,    // Cache for lineup
+            activeTab: 'activations',           // 'activations' | 'gifts' | 'lineup'
             search: '',
             selectedBrand: 'Todas',
             selectedType: 'Todos',
@@ -269,10 +329,12 @@
             countBadge: document.getElementById('count-badge'),
             filterToggleBtn: document.getElementById('filter-toggle-btn'),
             filterDrawer: document.getElementById('filter-drawer'),
+            filterLabel: document.getElementById('filter-label'),
             brandSelect: document.getElementById('brand-select'),
             quickFilters: document.getElementById('quick-filters-container'),
             tabActivations: document.getElementById('tab-activations'),
             tabGifts: document.getElementById('tab-gifts'),
+            tabLineup: document.getElementById('tab-lineup'),
             ptrIndicator: document.getElementById('ptr-indicator'),
             ptrIcon: document.getElementById('ptr-icon'),
             ptrSpinner: document.getElementById('ptr-spinner'),
@@ -290,7 +352,7 @@
         // --- INITIALIZATION ---
         async function init() {
             attachEventListeners();
-            await fetchData();
+            await fetchData(); // Initial fetch (activations)
         }
 
         function attachEventListeners() {
@@ -304,7 +366,6 @@
             els.filterToggleBtn.addEventListener('click', () => {
                 state.showFilters = !state.showFilters;
                 els.filterDrawer.classList.toggle('hidden', !state.showFilters);
-                // Update button style
                 if (state.showFilters) {
                     els.filterToggleBtn.classList.add('bg-indigo-600', 'border-indigo-500', 'text-white');
                     els.filterToggleBtn.classList.remove('bg-slate-900', 'border-slate-800', 'text-slate-400');
@@ -314,7 +375,7 @@
                 }
             });
 
-            // Brand Select
+            // Brand/Stage Select
             els.brandSelect.addEventListener('change', (e) => {
                 state.selectedBrand = e.target.value;
                 render();
@@ -331,23 +392,36 @@
             state.loading = true;
             updateLoadingUI();
 
+            // Decide which payload to use based on active tab
+            const isLineup = state.activeTab === 'lineup';
+            const currentPayload = isLineup ? LINEUP_PAYLOAD : ACTIVATIONS_PAYLOAD;
+            
+            // Update query string if searching
+            currentPayload.q = state.search || "*";
+
+            const payload = { "searches": [currentPayload] };
+
             try {
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(API_PAYLOAD)
+                    body: JSON.stringify(payload)
                 });
 
                 if (!response.ok) throw new Error('API Error');
                 const result = await response.json();
                 
                 if (result && result.results) {
-                    state.data = result;
+                    if (isLineup) {
+                        state.lineupData = result;
+                    } else {
+                        state.activationsData = result;
+                    }
                     populateFilters(); // Update filters based on new data
                 }
             } catch (error) {
-                console.error("Usando dados locais devido a erro na API:", error);
-                // Fallback data would be used here if implemented fully
+                console.error("Usando dados de fallback devido a erro na API ou coleção inexistente:", error);
+                // Fallback data is already in state, so we just carry on
             } finally {
                 state.loading = false;
                 state.isRefreshing = false;
@@ -381,12 +455,9 @@
                 const currentY = e.touches[0].clientY;
                 if (currentY > state.startY) {
                     const diff = currentY - state.startY;
-                    // Damping logic
                     state.pullY = Math.min(diff * 0.5, 120);
-                    
-                    // Visual feedback
                     if (state.pullY > 0) {
-                        e.preventDefault(); // Prevent browser reload
+                        e.preventDefault();
                         els.ptrIndicator.style.transform = `translateY(${state.pullY - 40}px)`;
                         els.ptrIcon.style.transform = `rotate(${state.pullY * 2}deg)`;
                     }
@@ -397,14 +468,11 @@
         async function handleTouchEnd() {
             if (state.pullY > 80) {
                 state.isRefreshing = true;
-                // Show loading spinner
                 els.ptrIndicator.style.transform = `translateY(40px)`;
                 els.ptrIcon.classList.add('hidden');
                 els.ptrSpinner.classList.remove('hidden');
-                
                 await fetchData();
             } else {
-                // Reset
                 els.ptrIndicator.style.transform = `translateY(-60px)`;
             }
             state.startY = 0;
@@ -413,35 +481,47 @@
 
         // --- FILTERS & DATA PROCESSING ---
         function populateFilters() {
-            const rawFacets = state.data.results[0]?.facet_counts || [];
+            const isLineup = state.activeTab === 'lineup';
+            const currentData = isLineup ? state.lineupData : state.activationsData;
+            const rawFacets = currentData.results[0]?.facet_counts || [];
             
-            // Brands
-            const brands = rawFacets.find(f => f.field_name === 'brand')?.counts || [];
-            els.brandSelect.innerHTML = '<option value="Todas">Todas as Marcas</option>';
-            brands.forEach(b => {
+            // Primary Filter: Brand (Activations) or Stage (Lineup)
+            const fieldName = isLineup ? 'stage_title' : 'brand';
+            const labelText = isLineup ? 'Filtrar por Palco' : 'Filtrar por Marca';
+            
+            const items = rawFacets.find(f => f.field_name === fieldName)?.counts || [];
+            
+            els.filterLabel.textContent = labelText;
+            els.brandSelect.innerHTML = '<option value="Todas">Todos</option>';
+            
+            items.forEach(b => {
                 const option = document.createElement('option');
                 option.value = b.value;
                 option.textContent = `${b.value} (${b.count})`;
                 els.brandSelect.appendChild(option);
             });
 
-            // Types (Quick Filters)
-            const types = rawFacets.find(f => f.field_name === 'types')?.counts || [];
-            els.quickFilters.innerHTML = '';
-            
-            // Add "Todos" button
-            const allBtn = createQuickFilterBtn('Todos', state.selectedType === 'Todos');
-            allBtn.onclick = () => { state.selectedType = 'Todos'; render(); };
-            els.quickFilters.appendChild(allBtn);
+            // Quick Filters (Types) - Only relevant for Activations/Gifts
+            if (!isLineup) {
+                const types = rawFacets.find(f => f.field_name === 'types')?.counts || [];
+                els.quickFilters.innerHTML = '';
+                
+                const allBtn = createQuickFilterBtn('Todos', state.selectedType === 'Todos');
+                allBtn.onclick = () => { state.selectedType = 'Todos'; render(); };
+                els.quickFilters.appendChild(allBtn);
 
-            types.forEach(t => {
-                const btn = createQuickFilterBtn(t.value, state.selectedType === t.value);
-                btn.onclick = () => { 
-                    state.selectedType = (state.selectedType === t.value) ? 'Todos' : t.value; 
-                    render(); 
-                };
-                els.quickFilters.appendChild(btn);
-            });
+                types.forEach(t => {
+                    const btn = createQuickFilterBtn(t.value, state.selectedType === t.value);
+                    btn.onclick = () => { 
+                        state.selectedType = (state.selectedType === t.value) ? 'Todos' : t.value; 
+                        render(); 
+                    };
+                    els.quickFilters.appendChild(btn);
+                });
+                els.quickFilters.style.display = 'flex';
+            } else {
+                els.quickFilters.style.display = 'none';
+            }
         }
 
         function createQuickFilterBtn(label, isActive) {
@@ -467,28 +547,33 @@
         }
 
         function getFilteredItems() {
-            const hits = state.data.results[0]?.hits || [];
+            const isLineup = state.activeTab === 'lineup';
+            const currentData = isLineup ? state.lineupData : state.activationsData;
+            const hits = currentData.results[0]?.hits || [];
             const term = state.search.toLowerCase();
 
             return hits.filter(hit => {
                 const doc = hit.document;
-                // Tab Logic
-                if (state.activeTab === 'gifts') {
+                
+                if (isLineup) {
+                    const matchesSearch = (doc.title || "").toLowerCase().includes(term) || 
+                                          (doc.description || "").toLowerCase().includes(term);
+                    const matchesStage = state.selectedBrand === 'Todas' || doc.stage_title === state.selectedBrand;
+                    return matchesSearch && matchesStage;
+                }
+                else if (state.activeTab === 'gifts') {
                     const giftText = extractGiftInfo(doc.questionsAndAnswers);
                     if (!giftText) return false;
-                    hit.giftText = giftText; // Store for rendering
-                    
-                    // Search logic for gifts
+                    hit.giftText = giftText; 
                     return doc.title.toLowerCase().includes(term) || 
                            doc.brand.toLowerCase().includes(term) ||
                            giftText.toLowerCase().includes(term);
                 } else {
-                    // Activations logic
+                    // Activations
                     const matchesSearch = doc.title.toLowerCase().includes(term) || 
                                           doc.brand.toLowerCase().includes(term);
                     const matchesBrand = state.selectedBrand === 'Todas' || doc.brand === state.selectedBrand;
                     const matchesType = state.selectedType === 'Todos' || doc.types?.includes(state.selectedType);
-                    
                     return matchesSearch && matchesBrand && matchesType;
                 }
             });
@@ -496,33 +581,44 @@
 
         // --- RENDERING ---
         function switchTab(tab) {
+            const prevTab = state.activeTab;
             state.activeTab = tab;
+            state.selectedBrand = 'Todas';
+            state.selectedType = 'Todos';
             
-            // Update UI Classes
+            // Update Classes
             const activeClass = "border-indigo-500 text-indigo-400";
             const inactiveClass = "border-transparent text-slate-500 hover:text-slate-300";
             const activeGiftClass = "border-pink-500 text-pink-400";
+            const activeLineupClass = "border-orange-500 text-orange-400";
 
+            els.tabActivations.className = `flex-1 py-3 text-sm font-medium border-b-2 transition-colors flex items-center justify-center gap-2 ${tab === 'activations' ? activeClass : inactiveClass}`;
+            els.tabGifts.className = `flex-1 py-3 text-sm font-medium border-b-2 transition-colors flex items-center justify-center gap-2 ${tab === 'gifts' ? activeGiftClass : inactiveClass}`;
+            els.tabLineup.className = `flex-1 py-3 text-sm font-medium border-b-2 transition-colors flex items-center justify-center gap-2 ${tab === 'lineup' ? activeLineupClass : inactiveClass}`;
+
+            // UI Toggles based on tab
             if (tab === 'activations') {
-                els.tabActivations.className = `flex-1 py-3 text-sm font-medium border-b-2 transition-colors flex items-center justify-center gap-2 ${activeClass}`;
-                els.tabGifts.className = `flex-1 py-3 text-sm font-medium border-b-2 transition-colors flex items-center justify-center gap-2 ${inactiveClass}`;
-                
-                // Show Filters in UI
                 els.filterToggleBtn.style.display = 'block';
-                els.quickFilters.style.display = 'flex';
-                els.searchInput.placeholder = "Buscar ativação ou marca...";
-            } else {
-                els.tabActivations.className = `flex-1 py-3 text-sm font-medium border-b-2 transition-colors flex items-center justify-center gap-2 ${inactiveClass}`;
-                els.tabGifts.className = `flex-1 py-3 text-sm font-medium border-b-2 transition-colors flex items-center justify-center gap-2 ${activeGiftClass}`;
-                
-                // Hide Filters in UI
+                els.searchInput.placeholder = "Buscar ativação...";
+            } else if (tab === 'gifts') {
                 els.filterToggleBtn.style.display = 'none';
-                els.quickFilters.style.display = 'none';
-                els.filterDrawer.classList.add('hidden'); // Close drawer if open
+                els.filterDrawer.classList.add('hidden');
                 els.searchInput.placeholder = "Buscar brindes...";
+            } else {
+                // Lineup
+                els.filterToggleBtn.style.display = 'block';
+                els.searchInput.placeholder = "Buscar painel...";
             }
 
-            render();
+            // If switching between activation/gifts and lineup, we need to re-populate filters and maybe fetch
+            const wasLineup = prevTab === 'lineup';
+            const isLineup = tab === 'lineup';
+
+            if (wasLineup !== isLineup) {
+                fetchData(); // Fetch new collection
+            } else {
+                render(); // Just re-render if same data source
+            }
         }
 
         function render() {
@@ -530,13 +626,16 @@
             els.countBadge.textContent = `${items.length} itens`;
             els.contentArea.innerHTML = '';
 
-            // Re-render quick filters to update active state styles
-            if(state.activeTab === 'activations') populateFilters();
+            if (state.activeTab === 'activations') populateFilters(); // Refresh quick filters state
 
             if (items.length === 0) {
+                let icon = 'star';
+                if (state.activeTab === 'gifts') icon = 'gift';
+                if (state.activeTab === 'lineup') icon = 'calendar-x';
+
                 els.contentArea.innerHTML = `
                     <div class="text-center py-20 opacity-50 fade-in">
-                        <i class="ph ph-${state.activeTab === 'gifts' ? 'gift' : 'star'} text-5xl mx-auto mb-4 text-slate-600 block"></i>
+                        <i class="ph ph-${icon} text-5xl mx-auto mb-4 text-slate-600 block"></i>
                         <p class="text-lg font-medium">Nenhum item encontrado</p>
                         <p class="text-sm">Tente mudar a busca ou filtros</p>
                     </div>
@@ -545,11 +644,49 @@
             }
 
             items.forEach(hit => {
-                const card = (state.activeTab === 'activations') 
-                    ? createActivationCard(hit) 
-                    : createGiftCard(hit);
+                let card;
+                if (state.activeTab === 'lineup') card = createLineupCard(hit);
+                else if (state.activeTab === 'gifts') card = createGiftCard(hit);
+                else card = createActivationCard(hit);
+                
                 els.contentArea.appendChild(card);
             });
+        }
+
+        function formatTime(isoString) {
+            if (!isoString) return '';
+            const date = new Date(isoString);
+            return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function createLineupCard(hit) {
+            const doc = hit.document;
+            const div = document.createElement('div');
+            div.className = "bg-slate-900/80 border-l-4 border-orange-500 rounded-r-xl p-4 mb-3 relative group overflow-hidden fade-in shadow-sm";
+            div.onclick = () => openModal(hit);
+
+            const timeStart = formatTime(doc.start_date);
+            const timeEnd = formatTime(doc.end_date);
+            const timeDisplay = timeStart ? `${timeStart} - ${timeEnd}` : 'Horário a definir';
+
+            div.innerHTML = `
+                <div class="flex flex-col gap-1">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs font-bold text-orange-400 uppercase tracking-wide flex items-center gap-1">
+                            <i class="ph ph-clock"></i> ${timeDisplay}
+                        </span>
+                        <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded uppercase border border-slate-700">
+                            ${doc.stage_title || 'Palco'}
+                        </span>
+                    </div>
+                    <h2 class="text-base font-bold text-white leading-snug pr-4">${doc.title}</h2>
+                    <p class="text-sm text-slate-400 line-clamp-2 mt-1">${doc.description || ''}</p>
+                </div>
+                <div class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-700 group-hover:text-orange-500 transition-colors">
+                    <i class="ph ph-caret-right text-xl"></i>
+                </div>
+            `;
+            return div;
         }
 
         function createActivationCard(hit) {
@@ -561,7 +698,7 @@
             const logoUrl = doc.brandImage || '';
             const logoContent = logoUrl 
                 ? `<img src="${logoUrl}" alt="${doc.brand}" class="w-full h-full object-contain rounded-full">`
-                : `<div class="w-full h-full bg-slate-700 flex items-center justify-center text-xs text-center font-bold">${doc.brand.substring(0,2)}</div>`;
+                : `<div class="w-full h-full bg-slate-700 flex items-center justify-center text-xs text-center font-bold">${doc.brand ? doc.brand.substring(0,2) : 'CC'}</div>`;
 
             const typesHtml = doc.types ? `<span class="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700">${formatTypes(doc.types)}</span>` : '';
             const calendarIcon = doc.schedules?.includes("Sim, via site") ? '<i class="ph ph-calendar-check text-emerald-400"></i>' : '';
@@ -573,7 +710,7 @@
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="flex justify-between items-start">
-                            <h3 class="text-sm font-semibold text-indigo-400 mb-0.5 truncate pr-2">${doc.brand}</h3>
+                            <h3 class="text-sm font-semibold text-indigo-400 mb-0.5 truncate pr-2">${doc.brand || 'Marca'}</h3>
                             ${calendarIcon}
                         </div>
                         <h2 class="text-base font-bold text-white leading-tight mb-2 line-clamp-2">${doc.title}</h2>
@@ -597,7 +734,7 @@
 
             const logoContent = doc.brandImage 
                 ? `<img src="${doc.brandImage}" alt="${doc.brand}" class="w-full h-full object-contain rounded-full">`
-                : `<div class="w-full h-full bg-slate-700 flex items-center justify-center text-xs text-center font-bold">${doc.brand.substring(0,2)}</div>`;
+                : `<div class="w-full h-full bg-slate-700 flex items-center justify-center text-xs text-center font-bold">${doc.brand ? doc.brand.substring(0,2) : 'CC'}</div>`;
 
             div.innerHTML = `
                 <div class="absolute top-3 right-3">
@@ -631,28 +768,58 @@
         // --- MODAL ---
         function openModal(hit) {
             const doc = hit.document;
-            const brandColor = BRAND_COLORS[doc.brand] || BRAND_COLORS['Default'];
+            let brandColor = BRAND_COLORS['Default'];
+            
+            // Tentar encontrar cor pela marca ou pelo palco
+            if (doc.brand && BRAND_COLORS[doc.brand]) brandColor = BRAND_COLORS[doc.brand];
+            if (doc.stage_title && doc.stage_title.includes('Thunder')) brandColor = BRAND_COLORS['Palco Thunder'];
 
             // Header
             els.modalHeaderBg.className = `relative h-32 ${brandColor} flex items-center justify-center shrink-0`;
-            els.modalBrandDisplay.innerHTML = doc.brandImage 
-                ? `<img src="${doc.brandImage}" class="h-20 w-auto object-contain drop-shadow-lg">`
-                : `<h2 class="text-2xl font-bold text-white">${doc.brand}</h2>`;
+            
+            // Image Logic
+            let imageHtml = '';
+            if (doc.brandImage) {
+                imageHtml = `<img src="${doc.brandImage}" class="h-20 w-auto object-contain drop-shadow-lg">`;
+            } else if (doc.image) {
+                imageHtml = `<img src="${doc.image}" class="w-full h-full object-cover opacity-80">`;
+                els.modalHeaderBg.classList.add('overflow-hidden'); // Ensure cover image clips
+            } else {
+                imageHtml = `<h2 class="text-2xl font-bold text-white">${doc.brand || doc.stage_title || 'Detalhes'}</h2>`;
+            }
+            els.modalBrandDisplay.innerHTML = imageHtml;
 
             // Title & Tags
             els.modalTitle.textContent = doc.title;
             els.modalTags.innerHTML = '';
             
-            doc.types?.forEach(type => {
-                els.modalTags.innerHTML += `<span class="px-3 py-1 bg-indigo-500/20 text-indigo-300 text-xs font-medium rounded-full border border-indigo-500/30">${type}</span>`;
-            });
+            // Tags logic varies by type
+            if (doc.types) {
+                doc.types.forEach(type => {
+                    els.modalTags.innerHTML += `<span class="px-3 py-1 bg-indigo-500/20 text-indigo-300 text-xs font-medium rounded-full border border-indigo-500/30">${type}</span>`;
+                });
+            }
             
+            if (doc.stage_title) {
+                 els.modalTags.innerHTML += `<span class="px-3 py-1 bg-orange-500/20 text-orange-300 text-xs font-medium rounded-full border border-orange-500/30">${doc.stage_title}</span>`;
+            }
+
             if (doc.schedules?.includes("Sim, via site")) {
                 els.modalTags.innerHTML += `<span class="px-3 py-1 bg-emerald-500/20 text-emerald-300 text-xs font-medium rounded-full border border-emerald-500/30 flex items-center gap-1"><i class="ph ph-calendar"></i> Agendamento</span>`;
             }
 
-            // Q&A
+            // Content / Q&A / Description
             els.modalQaList.innerHTML = '';
+            
+            // If it has a simple description (Lineup), show it first
+            if (doc.description) {
+                 const descDiv = document.createElement('div');
+                 descDiv.className = "text-slate-300 text-base leading-relaxed mb-4";
+                 descDiv.textContent = doc.description;
+                 els.modalQaList.appendChild(descDiv);
+            }
+
+            // Q&A Loop
             doc.questionsAndAnswers?.forEach(qa => {
                 const div = document.createElement('div');
                 div.className = "bg-slate-800/50 rounded-xl p-4 border border-slate-700";
@@ -668,13 +835,11 @@
 
             // Show Animation
             els.modalOverlay.classList.remove('hidden');
-            // Trigger reflow
-            void els.modalOverlay.offsetWidth;
+            void els.modalOverlay.offsetWidth; // Trigger reflow
             
             els.modalBackdrop.classList.remove('opacity-0');
             els.modalContent.classList.remove('translate-y-full');
             
-            // Lock body scroll
             document.body.style.overflow = 'hidden';
         }
 
