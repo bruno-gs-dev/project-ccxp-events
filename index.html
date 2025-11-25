@@ -1,598 +1,696 @@
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { Search, Filter, X, Calendar, Info, MapPin, ChevronRight, Share2, Star, Gift, RefreshCw, Loader2 } from 'lucide-react';
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CCXP Activations App</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
-// --- CONFIGURAÇÃO DA API ---
-const API_URL = "https://typesense.ccxp.com.br/multi_search?x-typesense-api-key=87UE3dBtOyjJpNU4TJIo4KOMiiasac93";
-const API_PAYLOAD = {
-    "searches": [
-        {
-            "query_by": "title, slug, brand, types, questionsAndAnswers, schedules",
-            "query_by_weights": "100, 80, 50, 30, 80, 40",
-            "highlight_fields": "title, brand, schedules",
-            "per_page": 250, // Aumentei para pegar tudo se possível
-            "facet_by": "brand,schedules,types",
-            "exhaustive_search": true,
-            "highlight_full_fields": "title, slug, brand, types, questionsAndAnswers, schedules",
-            "collection": "activations",
-            "q": "*",
-            "filter_by": "locale:pt-br",
-            "max_facet_values": 50,
-            "page": 1
-        }
-    ]
-};
-
-// --- DADOS DE FALLBACK (CASO A API FALHE) ---
-const RAW_DATA = {
-    "results": [
-        {
-            "facet_counts": [],
-            "found": 80,
-            "hits": [
-                {
-                    "document": {
-                        "brand": "Mundo Pixar ",
-                        "brandImage": "https://ccxp-production-files.s3.amazonaws.com/PIXAR_3564bf14bf.jpg",
-                        "id": "652",
-                        "questionsAndAnswers": [
-                            { "answer": "Oportunidade de estar lado a lado com os personagens em ambientes imersivos relacionados às grandes franquias Pixar.", "question": "DESCRIÇÃO DA ATIVAÇÃO " },
-                            { "answer": "Fila por ordem de chegada.", "question": "COMO PARTICIPAR " },
-                            { "answer": "Nenhuma.", "question": "RESTRIÇÕES" }
-                        ],
-                        "schedules": ["Não"],
-                        "title": "Mundo Pixar",
-                        "types": ["Exposição", "Foto Épica"]
-                    }
-                },
-                {
-                    "document": {
-                        "brand": "DRAGON BALL LEGENDS",
-                        "brandImage": "https://ccxp-production-files.s3.amazonaws.com/APP_DBL_Logo_CCXP_App_988x988_v1_d06be338cf.png",
-                        "id": "650",
-                        "questionsAndAnswers": [
-                            { "answer": "Prepare sua melhor pose e tire uma foto no cenário especial de Dragon Ball Legends, ao lado dos personagens mais icônicos do jogo!  Quem participar poderá ganhar brindes exclusivos, sujeitos à disponibilidade.", "question": "DESCRIÇÃO DA ATIVAÇÃO " },
-                            { "answer": "Fila por ordem de chegada.", "question": "COMO PARTICIPAR " },
-                            { "answer": "Nenhuma.", "question": "RESTRIÇÕES" }
-                        ],
-                        "schedules": ["Não"],
-                        "title": "DRAGON BALL LEGENDS - Foto com os personagens!",
-                        "types": ["Foto Épica"]
-                    }
-                },
-                 {
-                    "document": {
-                        "brand": "Petrobras",
-                        "brandImage": "https://ccxp-production-files.s3.amazonaws.com/petrobras_1ef85c5a9a.jpg",
-                        "id": "646",
-                        "questionsAndAnswers": [
-                            { "answer": "Um espaço de tapete verde ambientado com elementos de produção...", "question": "DESCRIÇÃO DA ATIVAÇÃO " },
-                            { "answer": "Fila por ordem de chegada.", "question": "COMO PARTICIPAR " },
-                            { "answer": "Nenhuma.", "question": "RESTRIÇÕES " }
-                        ],
-                        "schedules": ["Não"],
-                        "title": "Mãe, fui premiado!",
-                        "types": ["Foto Épica"]
-                    }
-                },
-                {
-                    "document": {
-                        "brand": "Amazon Prime",
-                        "brandImage": "https://ccxp-production-files.s3.amazonaws.com/Amazon_Prime_5761c102f4.png",
-                        "id": "628",
-                        "questionsAndAnswers": [
-                            { "answer": "No final, mostre sua torcida e escolha de que lado você está... Variações de brindes até durarem os estoques.", "question": "DESCRIÇÃO DA ATIVAÇÃO " },
-                            { "answer": "Fila geral: aberta para todas as pessoas...", "question": "COMO PARTICIPAR " },
-                            { "answer": "Idade recomendada: 12 anos ou mais...", "question": "RESTRIÇÕES" }
-                        ],
-                        "schedules": ["Não", "Sim, via site"],
-                        "title": "The Boys: O Parque do Capitão Pátria",
-                        "types": ["Gincana interativa"]
-                    }
-                },
-                {
-                    "document": {
-                        "brand": "Warner Bros. Pictures",
-                        "brandImage": "https://ccxp-production-files.s3.amazonaws.com/WB_Pictures_8fd60d53c1.png",
-                        "id": "580",
-                        "questionsAndAnswers": [
-                            { "answer": "Transforme-se e vire a Noiva ou o Frankenstein, e depois pose para sua própria foto de \"procurado\". Cuidado, porque os jornais vão querer a sua cabeça de recompensa!", "question": "DESCRIÇÃO DA ATIVAÇÃO " },
-                            { "answer": "50% das vagas disponíveis serão preenchidas...", "question": "COMO PARTICIPAR " },
-                            { "answer": "Crianças e adolescentes até 15 anos devem estar acompanhados...", "question": "RESTRIÇÕES " }
-                        ],
-                        "schedules": ["Sim, via site", "Não"],
-                        "title": "A Noiva! - De volta à vida ",
-                        "types": ["Foto Épica"]
+    <!-- Custom Config for Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    animation: {
+                        'spin-slow': 'spin 3s linear infinite',
                     }
                 }
-            ]
-        }
-    ]
-};
-
-const BRAND_COLORS = {
-    'Amazon Prime': 'bg-blue-600',
-    'Netflix': 'bg-red-600',
-    'Warner Bros. Pictures': 'bg-blue-800',
-    'HBO Max': 'bg-purple-700',
-    'Red Bull': 'bg-blue-900',
-    'Petrobras': 'bg-green-600',
-    'Sanrio': 'bg-pink-500',
-    'Default': 'bg-slate-700'
-};
-
-const GIFT_KEYWORDS = ['brinde', 'prêmio', 'ganhar', 'colecionável', 'poster', 'pôster', 'copo', 'tirante', 'pin', 'botton', 'adesivo', 'foto impressa', 'recompensa'];
-
-// Função para extrair texto de brinde
-const extractGiftInfo = (qaList) => {
-    if (!qaList) return null;
-    
-    // Procura nas respostas
-    for (const item of qaList) {
-        if (item.answer) {
-            const lowerAnswer = item.answer.toLowerCase();
-            if (GIFT_KEYWORDS.some(keyword => lowerAnswer.includes(keyword))) {
-                // Tenta limpar o texto para pegar a sentença relevante ou retorna o parágrafo
-                return item.answer;
             }
         }
-    }
-    return null;
-};
+    </script>
 
-const Modal = ({ isOpen, onClose, activation }) => {
-    if (!isOpen || !activation) return null;
-
-    const brandColor = BRAND_COLORS[activation.document.brand] || BRAND_COLORS['Default'];
-
-    return (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none">
-            {/* Backdrop */}
-            <div 
-                className="absolute inset-0 bg-black/70 backdrop-blur-sm pointer-events-auto transition-opacity"
-                onClick={onClose}
-            ></div>
-
-            {/* Modal Content */}
-            <div className="relative w-full sm:w-[500px] h-[90vh] sm:h-[80vh] bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col pointer-events-auto animate-in slide-in-from-bottom duration-300">
-                
-                {/* Header Image Area */}
-                <div className={`relative h-32 ${brandColor} flex items-center justify-center`}>
-                    <button 
-                        onClick={onClose}
-                        className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 rounded-full text-white transition-colors z-10"
-                    >
-                        <X size={24} />
-                    </button>
-                    {activation.document.brandImage ? (
-                        <img 
-                            src={activation.document.brandImage} 
-                            alt={activation.document.brand} 
-                            className="h-20 w-auto object-contain drop-shadow-lg"
-                        />
-                    ) : (
-                        <h2 className="text-2xl font-bold text-white">{activation.document.brand}</h2>
-                    )}
-                </div>
-
-                {/* Content Scrollable Area */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                    <div>
-                        <h2 className="text-2xl font-bold text-white leading-tight mb-2">
-                            {activation.document.title}
-                        </h2>
-                        <div className="flex flex-wrap gap-2 mt-3">
-                            {activation.document.types?.map((type, idx) => (
-                                <span key={idx} className="px-3 py-1 bg-indigo-500/20 text-indigo-300 text-xs font-medium rounded-full border border-indigo-500/30">
-                                    {type}
-                                </span>
-                            ))}
-                            {activation.document.schedules?.includes("Sim, via site") && (
-                                <span className="px-3 py-1 bg-emerald-500/20 text-emerald-300 text-xs font-medium rounded-full border border-emerald-500/30 flex items-center gap-1">
-                                    <Calendar size={12} /> Agendamento
-                                </span>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Q&A Section */}
-                    <div className="space-y-4">
-                        {activation.document.questionsAndAnswers?.map((qa, index) => (
-                            <div key={index} className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
-                                <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2 flex items-center gap-2">
-                                    <Info size={14} />
-                                    {qa.question.replace(':', '')}
-                                </h3>
-                                <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-line">
-                                    {qa.answer}
-                                </p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Footer Actions */}
-                <div className="p-4 bg-slate-900 border-t border-slate-800 flex gap-3">
-                    <button className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2">
-                        <MapPin size={18} />
-                        Localizar no Mapa
-                    </button>
-                    <button className="p-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all active:scale-95">
-                        <Share2 size={20} />
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-export default function App() {
-    const [activeTab, setActiveTab] = useState('activations'); // 'activations' | 'gifts'
-    const [data, setData] = useState(RAW_DATA);
-    const [loading, setLoading] = useState(false);
-    const [search, setSearch] = useState('');
-    const [selectedBrand, setSelectedBrand] = useState('Todas');
-    const [selectedType, setSelectedType] = useState('Todos');
-    const [showFilters, setShowFilters] = useState(false);
-    const [selectedActivation, setSelectedActivation] = useState(null);
-
-    // --- PULL TO REFRESH STATES ---
-    const [pullY, setPullY] = useState(0);
-    const [isRefreshing, setIsRefreshing] = useState(false);
-    const startY = useRef(0);
-    const PULL_THRESHOLD = 80;
-
-    // --- API FETCHING ---
-    const fetchData = useCallback(async () => {
-        setLoading(true);
-        try {
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(API_PAYLOAD)
-            });
-
-            if (!response.ok) throw new Error('API Error');
-            
-            const result = await response.json();
-            if (result && result.results) {
-                setData(result);
-            }
-        } catch (error) {
-            console.error("Failed to fetch from API, using fallback data:", error);
-            // Fallback is implicit
-        } finally {
-            setLoading(false);
-            setIsRefreshing(false);
+    <style>
+        /* Hide Scrollbar but keep functionality */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
         }
-    }, []);
-
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
-
-    // --- TOUCH HANDLERS (Pull to Refresh) ---
-    const handleTouchStart = (e) => {
-        if (window.scrollY === 0) {
-            startY.current = e.touches[0].clientY;
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }
-    };
-
-    const handleTouchMove = (e) => {
-        if (window.scrollY === 0 && startY.current > 0) {
-            const currentY = e.touches[0].clientY;
-            if (currentY > startY.current) {
-                // Formula de amortecimento (damping) para sensação elástica
-                const diff = currentY - startY.current;
-                const pull = Math.min(diff * 0.5, 120); 
-                setPullY(pull);
-            }
-        }
-    };
-
-    const handleTouchEnd = () => {
-        if (pullY > PULL_THRESHOLD) {
-            setIsRefreshing(true);
-            setPullY(PULL_THRESHOLD); // Mantém o spinner visível enquanto carrega
-            fetchData().then(() => {
-                setTimeout(() => setPullY(0), 300); // Esconde suavemente após carregar
-            });
-        } else {
-            setPullY(0); // Volta ao topo se não puxou o suficiente
-        }
-        startY.current = 0;
-    };
-
-    // Extract facets for filters
-    const facets = useMemo(() => {
-        if (!data?.results?.[0]?.facet_counts) return { brands: [], types: [] };
-        const rawFacets = data.results[0].facet_counts;
-        const brands = rawFacets.find(f => f.field_name === 'brand')?.counts || [];
-        const types = rawFacets.find(f => f.field_name === 'types')?.counts || [];
-        return { brands, types };
-    }, [data]);
-
-    // Filter items logic
-    const filteredItems = useMemo(() => {
-        if (!data?.results?.[0]?.hits) return [];
-        return data.results[0].hits.filter(hit => {
-            const matchesSearch = hit.document.title.toLowerCase().includes(search.toLowerCase()) || 
-                                  hit.document.brand.toLowerCase().includes(search.toLowerCase());
-            
-            const matchesBrand = selectedBrand === 'Todas' || hit.document.brand === selectedBrand;
-            const matchesType = selectedType === 'Todos' || hit.document.types?.includes(selectedType);
-
-            return matchesSearch && matchesBrand && matchesType;
-        });
-    }, [search, selectedBrand, selectedType, data]);
-
-    // Filter Gifts Logic
-    const giftItems = useMemo(() => {
-        if (!data?.results?.[0]?.hits) return [];
         
-        return data.results[0].hits
-            .map(hit => ({
-                ...hit,
-                giftText: extractGiftInfo(hit.document.questionsAndAnswers)
-            }))
-            .filter(hit => hit.giftText !== null)
-            // Apply search filter to gifts too
-            .filter(hit => 
-                hit.document.title.toLowerCase().includes(search.toLowerCase()) || 
-                hit.document.brand.toLowerCase().includes(search.toLowerCase()) ||
-                hit.giftText.toLowerCase().includes(search.toLowerCase())
-            );
-    }, [data, search]);
+        /* Smooth fade in */
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
-    // Format Types for quick display (max 2)
-    const formatTypes = (types) => {
-        if (!types || types.length === 0) return null;
-        if (types.length <= 2) return types.join(' • ');
-        return `${types[0]} +${types.length - 1}`;
-    };
+        /* Pull to refresh container transition */
+        #ptr-indicator {
+            transition: transform 0.2s ease-out;
+        }
 
-    return (
-        <div 
-            className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-indigo-500/30 pb-20"
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-        >
-            
-            {/* Pull to Refresh Indicator */}
-            <div 
-                className="fixed top-0 left-0 w-full z-50 pointer-events-none flex justify-center items-center transition-transform duration-200 ease-out"
-                style={{ 
-                    transform: `translateY(${pullY > 0 ? pullY - 40 : -60}px)`, // Começa escondido em -60px
-                }}
-            >
-                <div className="bg-slate-800/90 backdrop-blur text-white p-2 rounded-full shadow-lg border border-slate-700">
-                    {isRefreshing ? (
-                        <Loader2 className="animate-spin text-indigo-400" size={24} />
-                    ) : (
-                        <RefreshCw 
-                            size={24} 
-                            className="text-slate-400" 
-                            style={{ transform: `rotate(${pullY * 2}deg)` }} 
-                        />
-                    )}
-                </div>
-            </div>
+        /* Slide up modal animation */
+        .modal-enter {
+            animation: slideUp 0.3s ease-out forwards;
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans selection:bg-indigo-500/30 pb-20 overscroll-none">
 
-            {/* Header Sticky */}
-            <div className="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-md border-b border-white/10">
-                <div className="px-4 py-3">
-                    <div className="flex items-center justify-between mb-3">
-                        <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-                            Ativações CCXP
-                        </h1>
-                        <div className="flex items-center gap-2">
-                            {loading && !isRefreshing && <span className="text-xs text-slate-500 animate-pulse">Atualizando...</span>}
-                            <span className="text-xs font-medium text-slate-500 bg-slate-900 px-2 py-1 rounded-full border border-slate-800">
-                                {activeTab === 'activations' ? filteredItems.length : giftItems.length} itens
-                            </span>
-                        </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                            <input 
-                                type="text"
-                                placeholder={activeTab === 'activations' ? "Buscar ativação ou marca..." : "Buscar brindes..."}
-                                className="w-full bg-slate-900 border border-slate-800 text-slate-200 text-sm rounded-xl py-2.5 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-slate-600"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                            />
-                        </div>
-                        {activeTab === 'activations' && (
-                            <button 
-                                onClick={() => setShowFilters(!showFilters)}
-                                className={`p-2.5 rounded-xl border transition-all ${showFilters ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'}`}
-                            >
-                                <Filter size={20} />
-                            </button>
-                        )}
-                    </div>
-
-                    {/* Quick Filters (Only for Activations Tab) */}
-                    {activeTab === 'activations' && (
-                        <div className="flex gap-2 overflow-x-auto mt-3 pb-1 no-scrollbar mask-gradient-right">
-                            <button 
-                                onClick={() => setSelectedType('Todos')}
-                                className={`whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-medium transition-colors border ${selectedType === 'Todos' ? 'bg-slate-100 text-slate-900 border-white' : 'bg-slate-900 text-slate-400 border-slate-800'}`}
-                            >
-                                Todos
-                            </button>
-                            {facets.types.map(facet => (
-                                <button 
-                                    key={facet.value}
-                                    onClick={() => setSelectedType(facet.value === selectedType ? 'Todos' : facet.value)}
-                                    className={`whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-medium transition-colors border ${selectedType === facet.value ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-900 text-slate-400 border-slate-800'}`}
-                                >
-                                    {facet.value}
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                {/* Expanded Filters Drawer */}
-                {showFilters && activeTab === 'activations' && (
-                    <div className="px-4 pb-4 animate-in slide-in-from-top duration-200">
-                        <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-3">
-                            <div>
-                                <label className="text-xs font-semibold text-slate-500 uppercase mb-2 block">Filtrar por Marca</label>
-                                <select 
-                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-sm text-slate-300 focus:outline-none focus:border-indigo-500"
-                                    value={selectedBrand}
-                                    onChange={(e) => setSelectedBrand(e.target.value)}
-                                >
-                                    <option value="Todas">Todas as Marcas</option>
-                                    {facets.brands.map(b => (
-                                        <option key={b.value} value={b.value}>{b.value} ({b.count})</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* Tabs Navigation */}
-            <div className="flex border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm sticky top-[138px] z-30 sm:top-[128px]">
-                <button 
-                    onClick={() => setActiveTab('activations')}
-                    className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors flex items-center justify-center gap-2 ${activeTab === 'activations' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
-                >
-                    <Star size={16} /> Ativações
-                </button>
-                <button 
-                    onClick={() => setActiveTab('gifts')}
-                    className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors flex items-center justify-center gap-2 ${activeTab === 'gifts' ? 'border-pink-500 text-pink-400' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
-                >
-                    <Gift size={16} /> Brindes
-                </button>
-            </div>
-
-            {/* Main Content */}
-            <div className="p-4 space-y-4">
-                
-                {/* ACTIVATIONS TAB */}
-                {activeTab === 'activations' && (
-                    filteredItems.length === 0 ? (
-                        <div className="text-center py-20 opacity-50">
-                            <Star size={48} className="mx-auto mb-4 text-slate-600" />
-                            <p className="text-lg font-medium">Nenhuma ativação encontrada</p>
-                            <p className="text-sm">Tente mudar os filtros ou a busca</p>
-                        </div>
-                    ) : (
-                        filteredItems.map((hit) => (
-                            <div 
-                                key={hit.document.id}
-                                onClick={() => setSelectedActivation(hit)}
-                                className="bg-slate-900/50 border border-slate-800/50 rounded-2xl p-4 active:scale-[0.98] transition-all hover:bg-slate-900 hover:border-indigo-500/30 cursor-pointer relative group overflow-hidden"
-                            >
-                                <div className="flex items-start gap-4">
-                                    <div className="w-14 h-14 rounded-full bg-slate-800 border-2 border-slate-700 flex-shrink-0 overflow-hidden p-1">
-                                        {hit.document.brandImage ? (
-                                            <img src={hit.document.brandImage} alt={hit.document.brand} className="w-full h-full object-contain rounded-full" />
-                                        ) : (
-                                            <div className="w-full h-full bg-slate-700 flex items-center justify-center text-xs text-center font-bold">
-                                                {hit.document.brand.substring(0, 2)}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex justify-between items-start">
-                                            <h3 className="text-sm font-semibold text-indigo-400 mb-0.5 truncate pr-2">
-                                                {hit.document.brand}
-                                            </h3>
-                                            {hit.document.schedules?.includes("Sim, via site") && (
-                                                <Calendar size={14} className="text-emerald-400 flex-shrink-0" />
-                                            )}
-                                        </div>
-                                        <h2 className="text-base font-bold text-white leading-tight mb-2 line-clamp-2">
-                                            {hit.document.title}
-                                        </h2>
-                                        
-                                        <div className="flex items-center gap-2 text-xs text-slate-400">
-                                            {hit.document.types && (
-                                                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700">
-                                                    {formatTypes(hit.document.types)}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="self-center text-slate-600 group-hover:text-indigo-400 transition-colors">
-                                        <ChevronRight size={20} />
-                                    </div>
-                                </div>
-                            </div>
-                        ))
-                    )
-                )}
-
-                {/* GIFTS TAB */}
-                {activeTab === 'gifts' && (
-                    giftItems.length === 0 ? (
-                        <div className="text-center py-20 opacity-50">
-                            <Gift size={48} className="mx-auto mb-4 text-slate-600" />
-                            <p className="text-lg font-medium">Nenhum brinde encontrado</p>
-                            <p className="text-sm">Tente mudar a busca</p>
-                        </div>
-                    ) : (
-                        giftItems.map((hit) => (
-                            <div 
-                                key={`gift-${hit.document.id}`}
-                                onClick={() => setSelectedActivation(hit)}
-                                className="bg-gradient-to-br from-slate-900 to-slate-900/50 border border-pink-500/20 rounded-2xl p-4 active:scale-[0.98] transition-all hover:border-pink-500/40 cursor-pointer relative group"
-                            >
-                                <div className="absolute top-3 right-3">
-                                    <Gift size={16} className="text-pink-500" />
-                                </div>
-
-                                <div className="flex items-start gap-3 mb-3">
-                                    <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex-shrink-0 overflow-hidden p-1">
-                                        {hit.document.brandImage ? (
-                                            <img src={hit.document.brandImage} alt={hit.document.brand} className="w-full h-full object-contain rounded-full" />
-                                        ) : (
-                                            <div className="w-full h-full bg-slate-700 flex items-center justify-center text-xs text-center font-bold">
-                                                {hit.document.brand.substring(0, 2)}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div>
-                                        <h3 className="text-xs font-semibold text-slate-400">{hit.document.brand}</h3>
-                                        <h2 className="text-sm font-bold text-white line-clamp-1">{hit.document.title}</h2>
-                                    </div>
-                                </div>
-
-                                <div className="bg-pink-500/10 rounded-xl p-3 border border-pink-500/10">
-                                    <p className="text-sm text-pink-200 line-clamp-4 leading-relaxed">
-                                        "{hit.giftText}"
-                                    </p>
-                                </div>
-                                <div className="mt-2 text-right">
-                                    <span className="text-xs text-pink-400 font-medium">Ver detalhes</span>
-                                </div>
-                            </div>
-                        ))
-                    )
-                )}
-
-            </div>
-
-            {/* Details Modal */}
-            <Modal 
-                isOpen={!!selectedActivation} 
-                onClose={() => setSelectedActivation(null)} 
-                activation={selectedActivation} 
-            />
-
+    <!-- Pull to Refresh Indicator -->
+    <div id="ptr-indicator" class="fixed top-0 left-0 w-full z-50 pointer-events-none flex justify-center items-center" style="transform: translateY(-60px);">
+        <div class="bg-slate-800/90 backdrop-blur text-white p-2 rounded-full shadow-lg border border-slate-700 flex items-center justify-center">
+            <i id="ptr-icon" class="ph ph-arrows-clockwise text-slate-400 text-xl"></i>
+            <i id="ptr-spinner" class="ph ph-spinner animate-spin text-indigo-400 text-xl hidden"></i>
         </div>
-    );
-}
+    </div>
+
+    <!-- Header Sticky -->
+    <div class="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-md border-b border-white/10 transition-all duration-300" id="main-header">
+        <div class="px-4 py-3">
+            <!-- Top Bar -->
+            <div class="flex items-center justify-between mb-3">
+                <h1 class="text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                    Ativações CCXP
+                </h1>
+                <div class="flex items-center gap-2">
+                    <span id="loading-indicator" class="text-xs text-slate-500 animate-pulse hidden">Atualizando...</span>
+                    <span id="count-badge" class="text-xs font-medium text-slate-500 bg-slate-900 px-2 py-1 rounded-full border border-slate-800">
+                        0 itens
+                    </span>
+                </div>
+            </div>
+
+            <!-- Search & Filter Toggle -->
+            <div class="flex gap-2">
+                <div class="relative flex-1">
+                    <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg"></i>
+                    <input 
+                        type="text" 
+                        id="search-input"
+                        placeholder="Buscar ativação ou marca..." 
+                        class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-sm rounded-xl py-2.5 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-slate-600"
+                    >
+                </div>
+                <button id="filter-toggle-btn" class="p-2.5 rounded-xl border bg-slate-900 border-slate-800 text-slate-400 hover:text-white transition-all">
+                    <i class="ph ph-faders text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Quick Type Filters (Horizontal Scroll) -->
+            <div id="quick-filters-container" class="flex gap-2 overflow-x-auto mt-3 pb-1 no-scrollbar">
+                <!-- Injected via JS -->
+            </div>
+        </div>
+
+        <!-- Expanded Filters Drawer (Hidden by default) -->
+        <div id="filter-drawer" class="hidden px-4 pb-4 fade-in">
+            <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-3">
+                <div>
+                    <label class="text-xs font-semibold text-slate-500 uppercase mb-2 block">Filtrar por Marca</label>
+                    <select id="brand-select" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-sm text-slate-300 focus:outline-none focus:border-indigo-500">
+                        <option value="Todas">Todas as Marcas</option>
+                        <!-- Options injected via JS -->
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <div class="flex border-b border-slate-800 bg-slate-950/50 backdrop-blur-sm sticky top-[125px] z-30" id="tabs-nav">
+        <button 
+            onclick="switchTab('activations')"
+            id="tab-activations"
+            class="flex-1 py-3 text-sm font-medium border-b-2 border-indigo-500 text-indigo-400 transition-colors flex items-center justify-center gap-2"
+        >
+            <i class="ph ph-star text-lg"></i> Ativações
+        </button>
+        <button 
+            onclick="switchTab('gifts')"
+            id="tab-gifts"
+            class="flex-1 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-300 transition-colors flex items-center justify-center gap-2"
+        >
+            <i class="ph ph-gift text-lg"></i> Brindes
+        </button>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div id="content-area" class="p-4 space-y-4 min-h-[50vh]">
+        <!-- Cards injected via JS -->
+        <div class="text-center py-20 opacity-50">
+            <i class="ph ph-spinner animate-spin text-4xl mx-auto mb-4 text-slate-600"></i>
+            <p class="text-lg font-medium">Carregando...</p>
+        </div>
+    </div>
+
+    <!-- Details Modal -->
+    <div id="modal-overlay" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center hidden pointer-events-none">
+        <!-- Backdrop -->
+        <div 
+            class="absolute inset-0 bg-black/70 backdrop-blur-sm pointer-events-auto transition-opacity opacity-0" 
+            id="modal-backdrop"
+            onclick="closeModal()"
+        ></div>
+
+        <!-- Modal Content -->
+        <div id="modal-content" class="relative w-full sm:w-[500px] h-[90vh] sm:h-[80vh] bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col pointer-events-auto transform translate-y-full transition-transform duration-300">
+            
+            <!-- Header Image Area -->
+            <div id="modal-header-bg" class="relative h-32 bg-slate-700 flex items-center justify-center shrink-0">
+                <button 
+                    onclick="closeModal()"
+                    class="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 rounded-full text-white transition-colors z-10"
+                >
+                    <i class="ph ph-x text-xl"></i>
+                </button>
+                <div id="modal-brand-display" class="flex items-center justify-center w-full h-full p-4">
+                    <!-- Brand Image or Text injected here -->
+                </div>
+            </div>
+
+            <!-- Content Scrollable Area -->
+            <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-900" id="modal-body">
+                <div>
+                    <h2 id="modal-title" class="text-2xl font-bold text-white leading-tight mb-2"></h2>
+                    <div id="modal-tags" class="flex flex-wrap gap-2 mt-3">
+                        <!-- Tags injected here -->
+                    </div>
+                </div>
+
+                <!-- Q&A Section -->
+                <div id="modal-qa-list" class="space-y-4">
+                    <!-- Q&A Items injected here -->
+                </div>
+            </div>
+
+            <!-- Footer Actions -->
+            <div class="p-4 bg-slate-900 border-t border-slate-800 flex gap-3 shrink-0">
+                <button class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2">
+                    <i class="ph ph-map-pin text-xl"></i>
+                    Localizar no Mapa
+                </button>
+                <button class="p-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all active:scale-95">
+                    <i class="ph ph-share-network text-xl"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONSTANTS & CONFIG ---
+        const API_URL = "https://typesense.ccxp.com.br/multi_search?x-typesense-api-key=87UE3dBtOyjJpNU4TJIo4KOMiiasac93";
+        const API_PAYLOAD = {
+            "searches": [
+                {
+                    "query_by": "title, slug, brand, types, questionsAndAnswers, schedules",
+                    "query_by_weights": "100, 80, 50, 30, 80, 40",
+                    "highlight_fields": "title, brand, schedules",
+                    "per_page": 250,
+                    "facet_by": "brand,schedules,types",
+                    "exhaustive_search": true,
+                    "highlight_full_fields": "title, slug, brand, types, questionsAndAnswers, schedules",
+                    "collection": "activations",
+                    "q": "*",
+                    "filter_by": "locale:pt-br",
+                    "max_facet_values": 50,
+                    "page": 1
+                }
+            ]
+        };
+
+        const RAW_DATA_FALLBACK = {
+            "results": [{
+                "facet_counts": [],
+                "found": 0,
+                "hits": [] // Populated if needed, keeping it empty for brevity in fallback structure
+            }]
+        };
+
+        const BRAND_COLORS = {
+            'Amazon Prime': 'bg-blue-600',
+            'Netflix': 'bg-red-600',
+            'Warner Bros. Pictures': 'bg-blue-800',
+            'HBO Max': 'bg-purple-700',
+            'Red Bull': 'bg-blue-900',
+            'Petrobras': 'bg-green-600',
+            'Sanrio': 'bg-pink-500',
+            'Default': 'bg-slate-700'
+        };
+
+        const GIFT_KEYWORDS = ['brinde', 'prêmio', 'ganhar', 'colecionável', 'poster', 'pôster', 'copo', 'tirante', 'pin', 'botton', 'adesivo', 'foto impressa', 'recompensa'];
+
+        // --- STATE MANAGEMENT ---
+        const state = {
+            data: RAW_DATA_FALLBACK,
+            activeTab: 'activations', // 'activations' | 'gifts'
+            search: '',
+            selectedBrand: 'Todas',
+            selectedType: 'Todos',
+            showFilters: false,
+            loading: false,
+            pullY: 0,
+            isRefreshing: false,
+            startY: 0
+        };
+
+        // --- DOM ELEMENTS ---
+        const els = {
+            contentArea: document.getElementById('content-area'),
+            searchInput: document.getElementById('search-input'),
+            countBadge: document.getElementById('count-badge'),
+            filterToggleBtn: document.getElementById('filter-toggle-btn'),
+            filterDrawer: document.getElementById('filter-drawer'),
+            brandSelect: document.getElementById('brand-select'),
+            quickFilters: document.getElementById('quick-filters-container'),
+            tabActivations: document.getElementById('tab-activations'),
+            tabGifts: document.getElementById('tab-gifts'),
+            ptrIndicator: document.getElementById('ptr-indicator'),
+            ptrIcon: document.getElementById('ptr-icon'),
+            ptrSpinner: document.getElementById('ptr-spinner'),
+            loadingIndicator: document.getElementById('loading-indicator'),
+            modalOverlay: document.getElementById('modal-overlay'),
+            modalBackdrop: document.getElementById('modal-backdrop'),
+            modalContent: document.getElementById('modal-content'),
+            modalHeaderBg: document.getElementById('modal-header-bg'),
+            modalBrandDisplay: document.getElementById('modal-brand-display'),
+            modalTitle: document.getElementById('modal-title'),
+            modalTags: document.getElementById('modal-tags'),
+            modalQaList: document.getElementById('modal-qa-list')
+        };
+
+        // --- INITIALIZATION ---
+        async function init() {
+            attachEventListeners();
+            await fetchData();
+        }
+
+        function attachEventListeners() {
+            // Search
+            els.searchInput.addEventListener('input', (e) => {
+                state.search = e.target.value;
+                render();
+            });
+
+            // Filter Toggle
+            els.filterToggleBtn.addEventListener('click', () => {
+                state.showFilters = !state.showFilters;
+                els.filterDrawer.classList.toggle('hidden', !state.showFilters);
+                // Update button style
+                if (state.showFilters) {
+                    els.filterToggleBtn.classList.add('bg-indigo-600', 'border-indigo-500', 'text-white');
+                    els.filterToggleBtn.classList.remove('bg-slate-900', 'border-slate-800', 'text-slate-400');
+                } else {
+                    els.filterToggleBtn.classList.remove('bg-indigo-600', 'border-indigo-500', 'text-white');
+                    els.filterToggleBtn.classList.add('bg-slate-900', 'border-slate-800', 'text-slate-400');
+                }
+            });
+
+            // Brand Select
+            els.brandSelect.addEventListener('change', (e) => {
+                state.selectedBrand = e.target.value;
+                render();
+            });
+
+            // Pull to Refresh (Touch Events)
+            document.addEventListener('touchstart', handleTouchStart, { passive: true });
+            document.addEventListener('touchmove', handleTouchMove, { passive: false });
+            document.addEventListener('touchend', handleTouchEnd);
+        }
+
+        // --- DATA FETCHING ---
+        async function fetchData() {
+            state.loading = true;
+            updateLoadingUI();
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(API_PAYLOAD)
+                });
+
+                if (!response.ok) throw new Error('API Error');
+                const result = await response.json();
+                
+                if (result && result.results) {
+                    state.data = result;
+                    populateFilters(); // Update filters based on new data
+                }
+            } catch (error) {
+                console.error("Usando dados locais devido a erro na API:", error);
+                // Fallback data would be used here if implemented fully
+            } finally {
+                state.loading = false;
+                state.isRefreshing = false;
+                updateLoadingUI();
+                render();
+                
+                // Reset Pull to Refresh UI
+                els.ptrIndicator.style.transform = 'translateY(-60px)';
+                els.ptrIcon.classList.remove('hidden');
+                els.ptrSpinner.classList.add('hidden');
+            }
+        }
+
+        function updateLoadingUI() {
+            if (state.loading && !state.isRefreshing) {
+                els.loadingIndicator.classList.remove('hidden');
+            } else {
+                els.loadingIndicator.classList.add('hidden');
+            }
+        }
+
+        // --- PULL TO REFRESH LOGIC ---
+        function handleTouchStart(e) {
+            if (window.scrollY === 0) {
+                state.startY = e.touches[0].clientY;
+            }
+        }
+
+        function handleTouchMove(e) {
+            if (window.scrollY === 0 && state.startY > 0) {
+                const currentY = e.touches[0].clientY;
+                if (currentY > state.startY) {
+                    const diff = currentY - state.startY;
+                    // Damping logic
+                    state.pullY = Math.min(diff * 0.5, 120);
+                    
+                    // Visual feedback
+                    if (state.pullY > 0) {
+                        e.preventDefault(); // Prevent browser reload
+                        els.ptrIndicator.style.transform = `translateY(${state.pullY - 40}px)`;
+                        els.ptrIcon.style.transform = `rotate(${state.pullY * 2}deg)`;
+                    }
+                }
+            }
+        }
+
+        async function handleTouchEnd() {
+            if (state.pullY > 80) {
+                state.isRefreshing = true;
+                // Show loading spinner
+                els.ptrIndicator.style.transform = `translateY(40px)`;
+                els.ptrIcon.classList.add('hidden');
+                els.ptrSpinner.classList.remove('hidden');
+                
+                await fetchData();
+            } else {
+                // Reset
+                els.ptrIndicator.style.transform = `translateY(-60px)`;
+            }
+            state.startY = 0;
+            state.pullY = 0;
+        }
+
+        // --- FILTERS & DATA PROCESSING ---
+        function populateFilters() {
+            const rawFacets = state.data.results[0]?.facet_counts || [];
+            
+            // Brands
+            const brands = rawFacets.find(f => f.field_name === 'brand')?.counts || [];
+            els.brandSelect.innerHTML = '<option value="Todas">Todas as Marcas</option>';
+            brands.forEach(b => {
+                const option = document.createElement('option');
+                option.value = b.value;
+                option.textContent = `${b.value} (${b.count})`;
+                els.brandSelect.appendChild(option);
+            });
+
+            // Types (Quick Filters)
+            const types = rawFacets.find(f => f.field_name === 'types')?.counts || [];
+            els.quickFilters.innerHTML = '';
+            
+            // Add "Todos" button
+            const allBtn = createQuickFilterBtn('Todos', state.selectedType === 'Todos');
+            allBtn.onclick = () => { state.selectedType = 'Todos'; render(); };
+            els.quickFilters.appendChild(allBtn);
+
+            types.forEach(t => {
+                const btn = createQuickFilterBtn(t.value, state.selectedType === t.value);
+                btn.onclick = () => { 
+                    state.selectedType = (state.selectedType === t.value) ? 'Todos' : t.value; 
+                    render(); 
+                };
+                els.quickFilters.appendChild(btn);
+            });
+        }
+
+        function createQuickFilterBtn(label, isActive) {
+            const btn = document.createElement('button');
+            btn.textContent = label;
+            btn.className = `whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-medium transition-colors border ${
+                isActive 
+                ? 'bg-indigo-600 text-white border-indigo-500' 
+                : 'bg-slate-900 text-slate-400 border-slate-800'
+            }`;
+            return btn;
+        }
+
+        function extractGiftInfo(qaList) {
+            if (!qaList) return null;
+            for (const item of qaList) {
+                if (item.answer) {
+                    const lower = item.answer.toLowerCase();
+                    if (GIFT_KEYWORDS.some(k => lower.includes(k))) return item.answer;
+                }
+            }
+            return null;
+        }
+
+        function getFilteredItems() {
+            const hits = state.data.results[0]?.hits || [];
+            const term = state.search.toLowerCase();
+
+            return hits.filter(hit => {
+                const doc = hit.document;
+                // Tab Logic
+                if (state.activeTab === 'gifts') {
+                    const giftText = extractGiftInfo(doc.questionsAndAnswers);
+                    if (!giftText) return false;
+                    hit.giftText = giftText; // Store for rendering
+                    
+                    // Search logic for gifts
+                    return doc.title.toLowerCase().includes(term) || 
+                           doc.brand.toLowerCase().includes(term) ||
+                           giftText.toLowerCase().includes(term);
+                } else {
+                    // Activations logic
+                    const matchesSearch = doc.title.toLowerCase().includes(term) || 
+                                          doc.brand.toLowerCase().includes(term);
+                    const matchesBrand = state.selectedBrand === 'Todas' || doc.brand === state.selectedBrand;
+                    const matchesType = state.selectedType === 'Todos' || doc.types?.includes(state.selectedType);
+                    
+                    return matchesSearch && matchesBrand && matchesType;
+                }
+            });
+        }
+
+        // --- RENDERING ---
+        function switchTab(tab) {
+            state.activeTab = tab;
+            
+            // Update UI Classes
+            const activeClass = "border-indigo-500 text-indigo-400";
+            const inactiveClass = "border-transparent text-slate-500 hover:text-slate-300";
+            const activeGiftClass = "border-pink-500 text-pink-400";
+
+            if (tab === 'activations') {
+                els.tabActivations.className = `flex-1 py-3 text-sm font-medium border-b-2 transition-colors flex items-center justify-center gap-2 ${activeClass}`;
+                els.tabGifts.className = `flex-1 py-3 text-sm font-medium border-b-2 transition-colors flex items-center justify-center gap-2 ${inactiveClass}`;
+                
+                // Show Filters in UI
+                els.filterToggleBtn.style.display = 'block';
+                els.quickFilters.style.display = 'flex';
+                els.searchInput.placeholder = "Buscar ativação ou marca...";
+            } else {
+                els.tabActivations.className = `flex-1 py-3 text-sm font-medium border-b-2 transition-colors flex items-center justify-center gap-2 ${inactiveClass}`;
+                els.tabGifts.className = `flex-1 py-3 text-sm font-medium border-b-2 transition-colors flex items-center justify-center gap-2 ${activeGiftClass}`;
+                
+                // Hide Filters in UI
+                els.filterToggleBtn.style.display = 'none';
+                els.quickFilters.style.display = 'none';
+                els.filterDrawer.classList.add('hidden'); // Close drawer if open
+                els.searchInput.placeholder = "Buscar brindes...";
+            }
+
+            render();
+        }
+
+        function render() {
+            const items = getFilteredItems();
+            els.countBadge.textContent = `${items.length} itens`;
+            els.contentArea.innerHTML = '';
+
+            // Re-render quick filters to update active state styles
+            if(state.activeTab === 'activations') populateFilters();
+
+            if (items.length === 0) {
+                els.contentArea.innerHTML = `
+                    <div class="text-center py-20 opacity-50 fade-in">
+                        <i class="ph ph-${state.activeTab === 'gifts' ? 'gift' : 'star'} text-5xl mx-auto mb-4 text-slate-600 block"></i>
+                        <p class="text-lg font-medium">Nenhum item encontrado</p>
+                        <p class="text-sm">Tente mudar a busca ou filtros</p>
+                    </div>
+                `;
+                return;
+            }
+
+            items.forEach(hit => {
+                const card = (state.activeTab === 'activations') 
+                    ? createActivationCard(hit) 
+                    : createGiftCard(hit);
+                els.contentArea.appendChild(card);
+            });
+        }
+
+        function createActivationCard(hit) {
+            const doc = hit.document;
+            const div = document.createElement('div');
+            div.className = "bg-slate-900/50 border border-slate-800/50 rounded-2xl p-4 active:scale-[0.98] transition-all hover:bg-slate-900 hover:border-indigo-500/30 cursor-pointer relative group overflow-hidden fade-in";
+            div.onclick = () => openModal(hit);
+
+            const logoUrl = doc.brandImage || '';
+            const logoContent = logoUrl 
+                ? `<img src="${logoUrl}" alt="${doc.brand}" class="w-full h-full object-contain rounded-full">`
+                : `<div class="w-full h-full bg-slate-700 flex items-center justify-center text-xs text-center font-bold">${doc.brand.substring(0,2)}</div>`;
+
+            const typesHtml = doc.types ? `<span class="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700">${formatTypes(doc.types)}</span>` : '';
+            const calendarIcon = doc.schedules?.includes("Sim, via site") ? '<i class="ph ph-calendar-check text-emerald-400"></i>' : '';
+
+            div.innerHTML = `
+                <div class="flex items-start gap-4">
+                    <div class="w-14 h-14 rounded-full bg-slate-800 border-2 border-slate-700 flex-shrink-0 overflow-hidden p-1">
+                        ${logoContent}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-start">
+                            <h3 class="text-sm font-semibold text-indigo-400 mb-0.5 truncate pr-2">${doc.brand}</h3>
+                            ${calendarIcon}
+                        </div>
+                        <h2 class="text-base font-bold text-white leading-tight mb-2 line-clamp-2">${doc.title}</h2>
+                        <div class="flex items-center gap-2 text-xs text-slate-400">
+                            ${typesHtml}
+                        </div>
+                    </div>
+                    <div class="self-center text-slate-600 group-hover:text-indigo-400 transition-colors">
+                        <i class="ph ph-caret-right text-xl"></i>
+                    </div>
+                </div>
+            `;
+            return div;
+        }
+
+        function createGiftCard(hit) {
+            const doc = hit.document;
+            const div = document.createElement('div');
+            div.className = "bg-gradient-to-br from-slate-900 to-slate-900/50 border border-pink-500/20 rounded-2xl p-4 active:scale-[0.98] transition-all hover:border-pink-500/40 cursor-pointer relative group fade-in";
+            div.onclick = () => openModal(hit);
+
+            const logoContent = doc.brandImage 
+                ? `<img src="${doc.brandImage}" alt="${doc.brand}" class="w-full h-full object-contain rounded-full">`
+                : `<div class="w-full h-full bg-slate-700 flex items-center justify-center text-xs text-center font-bold">${doc.brand.substring(0,2)}</div>`;
+
+            div.innerHTML = `
+                <div class="absolute top-3 right-3">
+                    <i class="ph ph-gift text-pink-500 text-lg"></i>
+                </div>
+                <div class="flex items-start gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex-shrink-0 overflow-hidden p-1">
+                        ${logoContent}
+                    </div>
+                    <div>
+                        <h3 class="text-xs font-semibold text-slate-400">${doc.brand}</h3>
+                        <h2 class="text-sm font-bold text-white line-clamp-1">${doc.title}</h2>
+                    </div>
+                </div>
+                <div class="bg-pink-500/10 rounded-xl p-3 border border-pink-500/10">
+                    <p class="text-sm text-pink-200 line-clamp-4 leading-relaxed">"${hit.giftText}"</p>
+                </div>
+                <div class="mt-2 text-right">
+                    <span class="text-xs text-pink-400 font-medium">Ver detalhes</span>
+                </div>
+            `;
+            return div;
+        }
+
+        function formatTypes(types) {
+            if (!types || types.length === 0) return '';
+            if (types.length <= 2) return types.join(' • ');
+            return `${types[0]} +${types.length - 1}`;
+        }
+
+        // --- MODAL ---
+        function openModal(hit) {
+            const doc = hit.document;
+            const brandColor = BRAND_COLORS[doc.brand] || BRAND_COLORS['Default'];
+
+            // Header
+            els.modalHeaderBg.className = `relative h-32 ${brandColor} flex items-center justify-center shrink-0`;
+            els.modalBrandDisplay.innerHTML = doc.brandImage 
+                ? `<img src="${doc.brandImage}" class="h-20 w-auto object-contain drop-shadow-lg">`
+                : `<h2 class="text-2xl font-bold text-white">${doc.brand}</h2>`;
+
+            // Title & Tags
+            els.modalTitle.textContent = doc.title;
+            els.modalTags.innerHTML = '';
+            
+            doc.types?.forEach(type => {
+                els.modalTags.innerHTML += `<span class="px-3 py-1 bg-indigo-500/20 text-indigo-300 text-xs font-medium rounded-full border border-indigo-500/30">${type}</span>`;
+            });
+            
+            if (doc.schedules?.includes("Sim, via site")) {
+                els.modalTags.innerHTML += `<span class="px-3 py-1 bg-emerald-500/20 text-emerald-300 text-xs font-medium rounded-full border border-emerald-500/30 flex items-center gap-1"><i class="ph ph-calendar"></i> Agendamento</span>`;
+            }
+
+            // Q&A
+            els.modalQaList.innerHTML = '';
+            doc.questionsAndAnswers?.forEach(qa => {
+                const div = document.createElement('div');
+                div.className = "bg-slate-800/50 rounded-xl p-4 border border-slate-700";
+                div.innerHTML = `
+                    <h3 class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                        <i class="ph ph-info"></i>
+                        ${qa.question.replace(':', '')}
+                    </h3>
+                    <p class="text-slate-300 text-sm leading-relaxed whitespace-pre-line">${qa.answer}</p>
+                `;
+                els.modalQaList.appendChild(div);
+            });
+
+            // Show Animation
+            els.modalOverlay.classList.remove('hidden');
+            // Trigger reflow
+            void els.modalOverlay.offsetWidth;
+            
+            els.modalBackdrop.classList.remove('opacity-0');
+            els.modalContent.classList.remove('translate-y-full');
+            
+            // Lock body scroll
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            els.modalBackdrop.classList.add('opacity-0');
+            els.modalContent.classList.add('translate-y-full');
+
+            setTimeout(() => {
+                els.modalOverlay.classList.add('hidden');
+                document.body.style.overflow = '';
+            }, 300);
+        }
+
+        // Run
+        init();
+
+    </script>
+</body>
+</html>
