@@ -232,19 +232,21 @@
             "page": 1
         };
 
-        // Payload base para Line-ups
+        // Payload base para Line-ups (ATUALIZADO)
         const LINEUP_PAYLOAD = {
-            "query_by": "title, description, stage_title, guests",
-            "query_by_weights": "120, 50, 80, 60",
-            "highlight_fields": "title, description",
-            "per_page": 250,
-            "facet_by": "stage_title, date",
+            "query_by": "title, bio, categories, days, workGender, local, publishedAtString",
+            "query_by_weights": "12, 5, 3, 1, 1, 1, 1",
+            "highlight_fields": "title",
+            "per_page": 40,
+            "facet_by": "categories,days,letter,local,workGender",
+            "max_candidates": 4,
             "exhaustive_search": true,
-            "collection": "lineups", // Suposição de nome de coleção
+            "sort_by": "_text_match:desc,title:asc",
+            "highlight_full_fields": "title, bio, categories, days, workGender, local, publishedAtString",
+            "collection": "line_ups",
             "q": "*",
             "filter_by": "locale:pt-br",
-            "sort_by": "start_date:asc",
-            "max_facet_values": 50,
+            "max_facet_values": 40,
             "page": 1
         };
 
@@ -262,7 +264,7 @@
                             { "count": 5, "value": "Palco Thunder by Cinemark Club" },
                             { "count": 3, "value": "Palco Omelete" }
                         ],
-                        "field_name": "stage_title"
+                        "field_name": "local"
                     }
                 ],
                 "found": 2,
@@ -270,10 +272,9 @@
                     {
                         "document": {
                             "title": "Painel de Abertura: O Futuro do Cinema",
-                            "start_date": "2025-12-04T10:00:00Z",
-                            "end_date": "2025-12-04T11:00:00Z",
-                            "stage_title": "Palco Thunder by Cinemark Club",
-                            "description": "Grandes diretores discutem o que esperar dos próximos anos.",
+                            "days": ["2025-12-04"],
+                            "local": "Palco Thunder by Cinemark Club",
+                            "bio": "Grandes diretores discutem o que esperar dos próximos anos.",
                             "image": "https://ccxp-production-files.s3.amazonaws.com/CCXP_23_Thumb_Palcos_Thunder_01_882c9c270f.jpg",
                             "brand": "CCXP"
                         }
@@ -281,10 +282,9 @@
                     {
                         "document": {
                             "title": "Showcase: Paramount Pictures",
-                            "start_date": "2025-12-05T14:30:00Z",
-                            "end_date": "2025-12-05T15:30:00Z",
-                            "stage_title": "Palco Omelete",
-                            "description": "Novidades exclusivas e trailers inéditos.",
+                            "days": ["2025-12-05"],
+                            "local": "Palco Omelete",
+                            "bio": "Novidades exclusivas e trailers inéditos.",
                             "image": "https://ccxp-production-files.s3.amazonaws.com/CCXP_23_Thumb_Palcos_Omelete_01_4b8b8b8b8b.jpg",
                             "brand": "Paramount"
                         }
@@ -485,9 +485,9 @@
             const currentData = isLineup ? state.lineupData : state.activationsData;
             const rawFacets = currentData.results[0]?.facet_counts || [];
             
-            // Primary Filter: Brand (Activations) or Stage (Lineup)
-            const fieldName = isLineup ? 'stage_title' : 'brand';
-            const labelText = isLineup ? 'Filtrar por Palco' : 'Filtrar por Marca';
+            // Primary Filter: Brand (Activations) or Local (Lineup)
+            const fieldName = isLineup ? 'local' : 'brand';
+            const labelText = isLineup ? 'Filtrar por Local' : 'Filtrar por Marca';
             
             const items = rawFacets.find(f => f.field_name === fieldName)?.counts || [];
             
@@ -557,8 +557,8 @@
                 
                 if (isLineup) {
                     const matchesSearch = (doc.title || "").toLowerCase().includes(term) || 
-                                          (doc.description || "").toLowerCase().includes(term);
-                    const matchesStage = state.selectedBrand === 'Todas' || doc.stage_title === state.selectedBrand;
+                                          (doc.bio || "").toLowerCase().includes(term);
+                    const matchesStage = state.selectedBrand === 'Todas' || doc.local === state.selectedBrand;
                     return matchesSearch && matchesStage;
                 }
                 else if (state.activeTab === 'gifts') {
@@ -665,22 +665,22 @@
             div.className = "bg-slate-900/80 border-l-4 border-orange-500 rounded-r-xl p-4 mb-3 relative group overflow-hidden fade-in shadow-sm";
             div.onclick = () => openModal(hit);
 
-            const timeStart = formatTime(doc.start_date);
-            const timeEnd = formatTime(doc.end_date);
-            const timeDisplay = timeStart ? `${timeStart} - ${timeEnd}` : 'Horário a definir';
+            // Time handling is simplified since new payload doesn't explicitly list start_date field in selection
+            // We'll use 'days' or publishedAtString for now or just generic
+            const dayDisplay = doc.days ? doc.days.join(', ') : (doc.start_date ? formatTime(doc.start_date) : 'Data a confirmar');
 
             div.innerHTML = `
                 <div class="flex flex-col gap-1">
                     <div class="flex justify-between items-center mb-1">
                         <span class="text-xs font-bold text-orange-400 uppercase tracking-wide flex items-center gap-1">
-                            <i class="ph ph-clock"></i> ${timeDisplay}
+                            <i class="ph ph-clock"></i> ${dayDisplay}
                         </span>
                         <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded uppercase border border-slate-700">
-                            ${doc.stage_title || 'Palco'}
+                            ${doc.local || doc.stage_title || 'Palco'}
                         </span>
                     </div>
                     <h2 class="text-base font-bold text-white leading-snug pr-4">${doc.title}</h2>
-                    <p class="text-sm text-slate-400 line-clamp-2 mt-1">${doc.description || ''}</p>
+                    <p class="text-sm text-slate-400 line-clamp-2 mt-1">${doc.bio || doc.description || ''}</p>
                 </div>
                 <div class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-700 group-hover:text-orange-500 transition-colors">
                     <i class="ph ph-caret-right text-xl"></i>
@@ -785,7 +785,7 @@
                 imageHtml = `<img src="${doc.image}" class="w-full h-full object-cover opacity-80">`;
                 els.modalHeaderBg.classList.add('overflow-hidden'); // Ensure cover image clips
             } else {
-                imageHtml = `<h2 class="text-2xl font-bold text-white">${doc.brand || doc.stage_title || 'Detalhes'}</h2>`;
+                imageHtml = `<h2 class="text-2xl font-bold text-white">${doc.brand || doc.local || doc.stage_title || 'Detalhes'}</h2>`;
             }
             els.modalBrandDisplay.innerHTML = imageHtml;
 
@@ -800,8 +800,8 @@
                 });
             }
             
-            if (doc.stage_title) {
-                 els.modalTags.innerHTML += `<span class="px-3 py-1 bg-orange-500/20 text-orange-300 text-xs font-medium rounded-full border border-orange-500/30">${doc.stage_title}</span>`;
+            if (doc.local || doc.stage_title) {
+                 els.modalTags.innerHTML += `<span class="px-3 py-1 bg-orange-500/20 text-orange-300 text-xs font-medium rounded-full border border-orange-500/30">${doc.local || doc.stage_title}</span>`;
             }
 
             if (doc.schedules?.includes("Sim, via site")) {
@@ -811,11 +811,11 @@
             // Content / Q&A / Description
             els.modalQaList.innerHTML = '';
             
-            // If it has a simple description (Lineup), show it first
-            if (doc.description) {
+            // If it has a simple description or bio (Lineup), show it first
+            if (doc.description || doc.bio) {
                  const descDiv = document.createElement('div');
                  descDiv.className = "text-slate-300 text-base leading-relaxed mb-4";
-                 descDiv.textContent = doc.description;
+                 descDiv.textContent = doc.bio || doc.description;
                  els.modalQaList.appendChild(descDiv);
             }
 
